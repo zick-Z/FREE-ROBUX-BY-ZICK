@@ -50,11 +50,21 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            position: relative;
         }
         .avatar-img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            display: none;
+        }
+        .default-avatar {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #2e313a;
         }
         .username-tag {
             font-size: 14px;
@@ -76,7 +86,6 @@
             display: block;
             text-align: center;
         }
-        /* Textbox username di tengah & kosong secara default */
         input[type="text"] {
             width: 100%;
             padding: 12px 14px;
@@ -146,13 +155,16 @@
     <h2>Send Gift Robux</h2>
     <div class="subtitle">Transfer Robux directly to any Roblox account</div>
     
-    <!-- Lingkaran Foto Profil -->
     <div class="avatar-wrapper">
-        <img id="avatarPic" class="avatar-img" src="https://api.dicebear.com/7.x/bottts/svg?seed=default" alt="Avatar">
+        <div id="defaultAvatar" class="default-avatar">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="#898a8d">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+        </div>
+        <img id="avatarPic" class="avatar-img" alt="Roblox Avatar">
     </div>
     <div class="username-tag" id="userTag">@Username</div>
 
-    <!-- Input Username Kosong & Rata Tengah -->
     <div class="input-group">
         <label for="username">TARGET USERNAME</label>
         <input type="text" id="username" value="" placeholder="Enter username..." oninput="updateUser()">
@@ -177,7 +189,7 @@
 <div class="card success" id="successCard">
     <h2 style="color: #00e676;">Robux Sent!</h2>
     <div class="avatar-wrapper" style="margin-top: 15px;">
-        <img id="finalAvatarPic" class="avatar-img" src="">
+        <img id="finalAvatarPic" class="avatar-img" style="display: block;" src="">
     </div>
     <p style="font-size: 14px; color: #d0d0d0; margin: 15px 0;" id="successText"></p>
     <button class="send-btn" onclick="resetForm()">Send Another Gift</button>
@@ -185,20 +197,56 @@
 
 <script>
     let selectedRobux = 0;
+    let timer = null;
 
     function updateUser() {
         const username = document.getElementById('username').value.trim();
         const userTag = document.getElementById('userTag');
         const avatarPic = document.getElementById('avatarPic');
+        const defaultAvatar = document.getElementById('defaultAvatar');
+
+        clearTimeout(timer);
 
         if (username.length > 0) {
             userTag.innerText = '@' + username;
-            // Mengubah gambar avatar secara dinamis berdasarkan username yang diketik
-            // Menggunakan CDN Avatar publik yang dijamin 100% memuat gambar di Vercel
-            avatarPic.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`;
+            
+            // Memberi jeda pengetikan 500ms
+            timer = setTimeout(async () => {
+                try {
+                    // 1. Dapatkan User ID via RoProxy (bebas CORS)
+                    const userRes = await fetch('https://users.roproxy.com/v1/usernames/users', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ usernames: [username], excludeBannedUsers: false })
+                    });
+                    const userData = await userRes.json();
+
+                    if (userData.data && userData.data.length > 0) {
+                        const userId = userData.data[0].id;
+
+                        // 2. Ambil Headshot Avatar URL asli dari ID tersebut
+                        const thumbRes = await fetch(`https://thumbnails.roproxy.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`);
+                        const thumbData = await thumbRes.json();
+
+                        if (thumbData.data && thumbData.data.length > 0 && thumbData.data[0].imageUrl) {
+                            avatarPic.src = thumbData.data[0].imageUrl;
+                            avatarPic.style.display = 'block';
+                            defaultAvatar.style.display = 'none';
+                            return;
+                        }
+                    }
+                    // Jika username tidak ketemu/salah
+                    avatarPic.style.display = 'none';
+                    defaultAvatar.style.display = 'flex';
+                } catch (err) {
+                    avatarPic.style.display = 'none';
+                    defaultAvatar.style.display = 'flex';
+                }
+            }, 500);
         } else {
             userTag.innerText = '@Username';
-            avatarPic.src = 'https://api.dicebear.com/7.x/bottts/svg?seed=default';
+            avatarPic.style.display = 'none';
+            defaultAvatar.style.display = 'flex';
         }
     }
 
