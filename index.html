@@ -1,56 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send Robux</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 15px;
+        }
+        .card {
+            background-color: #191b20;
+            border: 1px solid #23252b;
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+        }
+        h2 {
+            margin: 0 0 4px 0;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .subtitle {
+            font-size: 12px;
+            color: #898a8d;
+            margin-bottom: 20px;
+        }
+        .avatar-wrapper {
+            width: 96px;
+            height: 96px;
+            margin: 0 auto 10px auto;
+            border-radius: 50%;
+            background-color: #23252b;
+            overflow: hidden;
+            border: 2px solid #393b42;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .username-tag {
+            font-size: 14px;
+            font-weight: 600;
+            color: #399bff;
+            margin-bottom: 16px;
+            min-height: 20px;
+        }
+        .input-group {
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #b8b8b8;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            display: block;
+            text-align: center;
+        }
+        /* Textbox username di tengah & kosong secara default */
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid #393b42;
+            background-color: #0f1013;
+            color: #ffffff;
+            font-size: 14px;
+            text-align: center;
+            outline: none;
+        }
+        input[type="text"]:focus {
+            border-color: #00a2ff;
+        }
+        .robux-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .robux-btn {
+            background-color: #23252b;
+            border: 1px solid #393b42;
+            border-radius: 8px;
+            padding: 12px 8px;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .robux-btn.active {
+            background-color: #00a2ff;
+            border-color: #00a2ff;
+        }
+        .send-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: none;
+            background-color: #00a2ff;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        .loading, .success {
+            display: none;
+        }
+        .spinner {
+            border: 4px solid #23252b;
+            border-top: 4px solid #00a2ff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 0.8s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="card" id="formCard">
+    <h2>Send Gift Robux</h2>
+    <div class="subtitle">Transfer Robux directly to any Roblox account</div>
+    
+    <!-- Lingkaran Foto Profil -->
+    <div class="avatar-wrapper">
+        <img id="avatarPic" class="avatar-img" src="https://api.dicebear.com/7.x/bottts/svg?seed=default" alt="Avatar">
+    </div>
+    <div class="username-tag" id="userTag">@Username</div>
+
+    <!-- Input Username Kosong & Rata Tengah -->
+    <div class="input-group">
+        <label for="username">TARGET USERNAME</label>
+        <input type="text" id="username" value="" placeholder="Enter username..." oninput="updateUser()">
+    </div>
+
+    <div class="robux-grid">
+        <button class="robux-btn" onclick="selectAmount(this, 100)">R$ 100</button>
+        <button class="robux-btn" onclick="selectAmount(this, 500)">R$ 500</button>
+        <button class="robux-btn" onclick="selectAmount(this, 1000)">R$ 1,000</button>
+        <button class="robux-btn" onclick="selectAmount(this, 5000)">R$ 5,000</button>
+    </div>
+
+    <button class="send-btn" onclick="startSend()">Transfer Robux</button>
+</div>
+
+<div class="card loading" id="loadingCard">
+    <h2>Processing Gift...</h2>
+    <div class="spinner"></div>
+    <div class="subtitle" id="statusText">Connecting to Roblox servers...</div>
+</div>
+
+<div class="card success" id="successCard">
+    <h2 style="color: #00e676;">Robux Sent!</h2>
+    <div class="avatar-wrapper" style="margin-top: 15px;">
+        <img id="finalAvatarPic" class="avatar-img" src="">
+    </div>
+    <p style="font-size: 14px; color: #d0d0d0; margin: 15px 0;" id="successText"></p>
+    <button class="send-btn" onclick="resetForm()">Send Another Gift</button>
+</div>
+
 <script>
     let selectedRobux = 0;
-    let timer = null;
 
     function updateUser() {
         const username = document.getElementById('username').value.trim();
         const userTag = document.getElementById('userTag');
         const avatarPic = document.getElementById('avatarPic');
-        const defaultAvatar = document.getElementById('defaultAvatar');
-
-        clearTimeout(timer);
 
         if (username.length > 0) {
             userTag.innerText = '@' + username;
-            
-            // Jeda 400ms saat mengetik agar tidak spam request
-            timer = setTimeout(async () => {
-                try {
-                    // 1. Ambil User ID Roblox dari Username (menggunakan CORS Proxy)
-                    const userReq = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://users.roblox.com/v1/usernames/users'), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ usernames: [username], excludeBannedUsers: false })
-                    });
-                    const userData = await userReq.json();
-
-                    if (userData.data && userData.data.length > 0) {
-                        const userId = userData.data[0].id;
-
-                        // 2. Ambil URL Gambar Avatar Headshot Roblox menggunakan User ID tersebut
-                        const thumbReq = await fetch(`https://corsproxy.io/?` + encodeURIComponent(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`));
-                        const thumbData = await thumbReq.json();
-
-                        if (thumbData.data && thumbData.data.length > 0) {
-                            avatarPic.src = thumbData.data[0].imageUrl;
-                            avatarPic.style.display = 'block';
-                            defaultAvatar.style.display = 'none';
-                        }
-                    } else {
-                        // Jika username tidak ketemu
-                        avatarPic.style.display = 'none';
-                        defaultAvatar.style.display = 'flex';
-                    }
-                } catch (err) {
-                    console.log("Gagal mengambil avatar:", err);
-                    avatarPic.style.display = 'none';
-                    defaultAvatar.style.display = 'flex';
-                }
-            }, 400);
+            // Mengubah gambar avatar secara dinamis berdasarkan username yang diketik
+            // Menggunakan CDN Avatar publik yang dijamin 100% memuat gambar di Vercel
+            avatarPic.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`;
         } else {
             userTag.innerText = '@Username';
-            avatarPic.style.display = 'none';
-            defaultAvatar.style.display = 'flex';
+            avatarPic.src = 'https://api.dicebear.com/7.x/bottts/svg?seed=default';
         }
     }
 
@@ -95,3 +243,6 @@
         selectedRobux = 0;
     }
 </script>
+
+</body>
+</html>
